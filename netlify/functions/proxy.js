@@ -1,6 +1,3 @@
-// netlify/functions/proxy.js
-import fetch from "node-fetch";
-
 export async function handler(event, context) {
   if (event.httpMethod === "OPTIONS") {
     return {
@@ -16,11 +13,12 @@ export async function handler(event, context) {
 
   if (event.httpMethod === "POST") {
     try {
-        const response = await fetch("https://script.google.com/macros/s/AKfycbweususVDQz0994_yxRJIGZzTdA1HFH8-1wdk89dJXoSnX2ZxngIIDvE87RpLYqd99A/exec", {
+      // Use the global fetch directly
+      const response = await fetch("https://script.google.com/macros/s/AKfycbYourScriptID/exec", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: event.body,
-    });
+      });
 
       const data = await response.text();
 
