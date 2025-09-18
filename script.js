@@ -195,7 +195,7 @@ form.addEventListener("submit", async (e) => {
   }
   // Send to Google Apps Script
   try {
-    const res = await fetch("./netlify/functions/proxy", {
+    const res = await fetch("/.netlify/functions/proxy", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
