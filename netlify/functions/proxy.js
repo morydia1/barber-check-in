@@ -14,7 +14,7 @@ export async function handler(event, context) {
   if (event.httpMethod === "POST") {
     try {
       // Use the global fetch directly
-      const response = await fetch("https://script.google.com/macros/s/AKfycbYourScriptID/exec", {
+      const response = await fetch("https://script.google.com/macros/s/AKfycbweususVDQz0994_yxRJIGZzTdA1HFH8-1wdk89dJXoSnX2ZxngIIDvE87RpLYqd99A/exec", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: event.body,
