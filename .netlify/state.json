@@ -1,0 +1,18 @@
+{
+	"geolocation": {
+		"data": {
+			"country": {
+				"code": "US",
+				"name": "United States"
+			},
+			"subdivision": {
+				"code": "TX",
+				"name": "Texas"
+			},
+			"timezone": "America/Chicago",
+			"latitude": 32.7797,
+			"longitude": -96.8022
+		},
+		"timestamp": 1758168314194
+	}
+}
