@@ -1,48 +1,28 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Customer Check-In :barber:</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Check-in</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="form-container">
-    <h2>Customer Check-In :barber:</h2>
-    <p class="subtitle">Please fill out your info</p>
-
-    <form id="customerForm">
-      <!-- Name -->
-      <label for="name">Full Name *</label>
-      <input type="text" id="name" name="name" placeholder="John Doe" required />
-
-      <!-- Phone -->
-      <label for="phone">Phone Number *</label>
-      <input type="tel" id="phone" name="phone" placeholder="(555) 123-4567" required />
-
-      <!-- Email -->
-      <label for="email">Email</label>
-      <input type="email" id="email" name="email" placeholder="you@example.com" />
-
-      <!-- Age Range -->
-      <label>Age Range *</label>
-      <div class="age-range" id="ageRangeGroup">
-        <input type="radio" id="age1" name="ageRange" value="kid" required />
-        <label for="age1">0–12</label>
-
-        <input type="radio" id="age2" name="ageRange" value="adult" />
-        <label for="age2">13–54</label>
-
-        <input type="radio" id="age3" name="ageRange" value="senior" />
-        <label for="age3">55+</label>
+  <div class="container">
+    <h1>👋 Welcome!</h1>
+    <p>Quick check-in</p>
+    <form id="checkinForm">
+      <input id="name" placeholder="Full name" required>
+      <input id="phone" placeholder="Phone" inputmode="numeric" required>
+      <input id="email" placeholder="Email" type="email">
+      <div class="age-group">
+        <button type="button" data-value="Kid">Kid</button>
+        <button type="button" data-value="Adult">Adult</button>
+        <button type="button" data-value="Senior">Senior</button>
       </div>
-
-      <!-- Submit -->
       <button type="submit">Check In</button>
-      <p id="formMessage" class="form-message"></p>
     </form>
+    <p id="status"></p>
   </div>
-
   <script src="script.js"></script>
 </body>
 </html>
