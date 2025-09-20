@@ -1,28 +1,54 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Check-in</title>
+  <title>Walk-in Check-in</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
-    <h1>👋 Welcome!</h1>
-    <p>Quick check-in</p>
-    <form id="checkinForm">
-      <input id="name" placeholder="Full name" required>
-      <input id="phone" placeholder="Phone" inputmode="numeric" required>
-      <input id="email" placeholder="Email" type="email">
-      <div class="age-group">
-        <button type="button" data-value="Kid">Kid</button>
-        <button type="button" data-value="Adult">Adult</button>
-        <button type="button" data-value="Senior">Senior</button>
+  <main class="container" id="mainContainer">
+    <header class="card-header">
+      <h1>👋 Welcome!</h1>
+      <p class="muted">Quick check-in — it'll only take a moment.</p>
+    </header>
+
+    <form id="checkinForm" class="card-body" novalidate>
+      <label class="field-label" for="name">Full name <span class="req">*</span></label>
+      <input id="name" name="name" placeholder="John Doe" required>
+
+      <label class="field-label" for="phone">Phone number <span class="req">*</span></label>
+      <input id="phone" name="phone" inputmode="tel" placeholder="(555) 123-4567" required>
+
+      <label class="field-label" for="email">Email (optional)</label>
+      <input id="email" name="email" type="email" placeholder="you@example.com">
+
+      <label class="field-label">Age Group <span class="req">*</span></label>
+      <div class="age-group" role="radiogroup" aria-label="Age Group">
+        <button type="button" data-value="Kid" class="age-btn">Kid</button>
+        <button type="button" data-value="Adult" class="age-btn">Adult</button>
+        <button type="button" data-value="Senior" class="age-btn">Senior</button>
       </div>
-      <button type="submit">Check In</button>
+
+      <div class="submit-row">
+        <button id="submitBtn" type="submit" class="primary">Check In</button>
+      </div>
+
+      <div id="formStatus" class="form-status" aria-live="polite"></div>
     </form>
-    <p id="status"></p>
-  </div>
+
+    <div id="allSet" class="all-set" hidden>
+      <div class="checkmark">✅</div>
+      <h2>All set!</h2>
+      <p>Thanks — you're checked in. The barber has your info.</p>
+      <button id="newCheckin" class="link-btn">Back to form</button>
+    </div>
+
+    <footer class="card-footer">
+      <small class="muted">Ask the staff if you need help.</small>
+    </footer>
+  </main>
+
   <script src="script.js"></script>
 </body>
 </html>

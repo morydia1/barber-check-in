@@ -1,55 +1,93 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Barber Admin - QR Generator</title>
-<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin – QR Generator</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* small admin page tweaks */
+    #qr-container { text-align:center; padding:14px; }
+    #qr-container canvas, #qr-container img { max-width:260px; width:100%; border-radius:10px; border:1px solid #eee; }
+    .small-muted { color:#666; font-size:13px; margin-top:8px; }
+  </style>
 </head>
 <body>
+  <!-- login modal -->
   <div id="loginModal" class="modal">
     <div class="modal-content">
-      <h2>Login</h2>
-      <input type="email" id="loginEmail" placeholder="Email" required>
-      <input type="password" id="loginToken" placeholder="Token (if provided)">
-      <button id="loginBtn">Login</button>
-      <p id="loginStatus" style="color:red;"></p>
+      <h2>Sign in</h2>
+      <input id="loginEmail" type="email" placeholder="Your email" />
+      <input id="loginToken" type="password" placeholder="Token (if provided)" />
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button id="loginBtn" style="flex:1;">Sign in</button>
+      </div>
+      <p id="loginStatus" class="small-muted" style="color:#c33; margin-top:8px;"></p>
     </div>
   </div>
 
-  <div id="qrApp" style="display:none; padding:20px;">
-    <h1>QR Code Generator</h1>
+  <main class="container" style="padding:18px;">
+    <div id="qrApp" style="display:none;">
+      <header style="text-align:center;">
+        <h2>QR Code Generator</h2>
+        <p class="small-muted">Generate a QR for customers to scan.</p>
+      </header>
 
-    <div id="adminView" style="display:none;">
-      <p>Generate QR for any barber:</p>
-      <input type="email" id="barberEmail" placeholder="Barber Email">
-      <input type="file" id="adminLogo" accept="image/*">
-      <button id="generateAdminQR">Generate QR</button>
+      <section id="adminView" style="display:none; margin-top:10px;">
+        <label class="field-label">Barber Email</label>
+        <input id="barberEmail" placeholder="barber@example.com">
+        <label class="field-label">Logo (optional)</label>
+        <input id="adminLogo" type="file" accept="image/*">
+        <div style="margin-top:10px;">
+          <button id="generateAdminQR" class="primary">Generate QR</button>
+        </div>
+      </section>
+
+      <section id="barberView" style="display:none; margin-top:10px;">
+        <p class="small-muted">You're logged in as a barber. Upload a logo (optional) and generate your QR.</p>
+        <label class="field-label">Logo (optional)</label>
+        <input id="barberLogo" type="file" accept="image/*">
+        <div style="margin-top:10px;">
+          <button id="generateBarberQR" class="primary">Generate My QR</button>
+        </div>
+      </section>
+
+      <div id="qr-container"></div>
+      <div id="adminStatus" class="form-status"></div>
     </div>
-
-    <div id="barberView" style="display:none;">
-      <p>Generate your QR:</p>
-      <input type="file" id="barberLogo" accept="image/*">
-      <button id="generateBarberQR">Generate QR</button>
-    </div>
-
-    <div id="qr-container" style="margin-top:20px;"></div>
-  </div>
+  </main>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 <script>
-const loginBtn = document.getElementById('loginBtn');
+/**
+ * Admin page JS
+ * - login -> calls /.netlify/functions/auth
+ * - admin can lookup barber via /.netlify/functions/lookup
+ * - barber login returns pseudonym, barber can only generate their own qr
+ */
+
 const loginModal = document.getElementById('loginModal');
-const qrApp = document.getElementById('qrApp');
+const loginBtn = document.getElementById('loginBtn');
+const loginEmail = document.getElementById('loginEmail');
+const loginToken = document.getElementById('loginToken');
 const loginStatus = document.getElementById('loginStatus');
 
-loginBtn.addEventListener('click', async () => {
-  loginStatus.textContent = '';
-  const email = document.getElementById('loginEmail').value.trim();
-  const token = document.getElementById('loginToken').value.trim();
+const qrApp = document.getElementById('qrApp');
+const adminView = document.getElementById('adminView');
+const barberView = document.getElementById('barberView');
+const adminStatus = document.getElementById('adminStatus');
+const qrContainer = document.getElementById('qr-container');
 
-  if (!email) { loginStatus.innerText = 'Please enter your email.'; return; }
+let currentRole = null;
+let currentEmail = null;
+let currentPseudonym = null;
+
+loginBtn.addEventListener('click', async () => {
+  loginStatus.style.color = '#333';
+  loginStatus.textContent = 'Verifying…';
+  loginBtn.disabled = true;
+  const email = loginEmail.value.trim();
+  const token = loginToken.value.trim();
 
   try {
     const res = await fetch('/.netlify/functions/auth', {
@@ -57,74 +95,147 @@ loginBtn.addEventListener('click', async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, token })
     });
-    const data = await res.json();
+    const json = await res.json();
     if (!res.ok) {
-      loginStatus.innerText = data.error || 'Unauthorized';
-      return;
+      loginStatus.style.color = 'red';
+      loginStatus.textContent = (json && json.error) ? json.error : 'Unauthorized';
+      loginBtn.disabled = false; return;
     }
+
+    // success
+    currentRole = json.role;
+    currentEmail = email;
+    // barber login will return pseudonym in response (auth.js does this)
+    currentPseudonym = json.pseudonym || null;
 
     loginModal.style.display = 'none';
     qrApp.style.display = 'block';
+    loginBtn.disabled = false;
+    loginStatus.textContent = '';
 
-    if (data.role === 'admin') {
-      showAdminQRGenerator();
-    } else if (data.role === 'barber') {
-      showBarberQRGenerator(email, data.pseudonym);
+    if (currentRole === 'admin') {
+      adminView.style.display = 'block';
+      barberView.style.display = 'none';
+    } else if (currentRole === 'barber') {
+      adminView.style.display = 'none';
+      barberView.style.display = 'block';
     }
   } catch (err) {
     console.error(err);
-    loginStatus.innerText = 'Network error';
+    loginStatus.style.color = 'red';
+    loginStatus.textContent = 'Network error';
+    loginBtn.disabled = false;
   }
 });
 
-function showAdminQRGenerator() {
-  document.getElementById('adminView').style.display = 'block';
-  document.getElementById('generateAdminQR').addEventListener('click', () => {
-    const barberEmail = document.getElementById('barberEmail').value.trim();
-    const logoFile = document.getElementById('adminLogo').files[0];
-    if (!barberEmail) { alert('Enter barber email'); return; }
-    generateQRCodeForEmail(barberEmail, logoFile);
-  });
-}
+// Admin: click generate -> lookup barber to get pseudonym and then create QR
+document.getElementById('generateAdminQR').addEventListener('click', async () => {
+  adminStatus.style.color = '#333';
+  adminStatus.textContent = 'Looking up barber…';
+  qrContainer.innerHTML = '';
+  const email = document.getElementById('barberEmail').value.trim();
+  const logoFile = document.getElementById('adminLogo').files[0];
+  if (!email) { adminStatus.style.color='red'; adminStatus.textContent='Please enter barber email'; return; }
 
-function showBarberQRGenerator(email, pseudonym) {
-  document.getElementById('barberView').style.display = 'block';
-  document.getElementById('generateBarberQR').addEventListener('click', () => {
-    const logoFile = document.getElementById('barberLogo').files[0];
-    const emailToUse = email;
-    generateQRCodeForEmail(emailToUse, logoFile);
-  });
-}
+  try {
+    const res = await fetch('/.netlify/functions/lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const info = await res.json();
+    if (!res.ok) {
+      adminStatus.style.color='red';
+      adminStatus.textContent = (info && info.error) ? info.error : 'Barber not found';
+      return;
+    }
+    const pseudonym = info.pseudonym;
+    if (!pseudonym) {
+      adminStatus.style.color='red';
+      adminStatus.textContent = 'Barber has no pseudonym in registry';
+      return;
+    }
+    adminStatus.textContent = 'Generating QR…';
+    generateQRForPseudo(pseudonym, logoFile);
+    adminStatus.textContent = 'Done — right click the image to save or download.';
+  } catch (err) {
+    console.error(err);
+    adminStatus.style.color='red';
+    adminStatus.textContent = 'Network error during lookup';
+  }
+});
 
-function generateQRCodeForEmail(email, logoFile) {
-  const pseudo = email.split('@')[0].replace(/[^a-zA-Z0-9]/g,'-');
-  const qrUrl = `${location.origin}/?barber=${encodeURIComponent(pseudo)}`;
-  const container = document.getElementById('qr-container');
-  container.innerHTML = '';
+// Barber: generate QR for their own pseudonym
+document.getElementById('generateBarberQR').addEventListener('click', async () => {
+  adminStatus.style.color = '#333';
+  adminStatus.textContent = 'Generating your QR…';
+  qrContainer.innerHTML = '';
+  const logoFile = document.getElementById('barberLogo').files[0];
+
+  // currentPseudonym should be set during login (auth returned it)
+  if (!currentPseudonym) {
+    adminStatus.style.color = 'red';
+    adminStatus.textContent = 'Your account is missing a pseudonym in registry.';
+    return;
+  }
+  generateQRForPseudo(currentPseudonym, logoFile);
+  adminStatus.textContent = 'Done — right click the image to save or download.';
+});
+
+// Helper: generate QR and optionally overlay logo (client-side)
+function generateQRForPseudo(pseudonym, logoFile) {
+  qrContainer.innerHTML = '';
+  const qrUrl = `${location.origin}/?barber=${encodeURIComponent(pseudonym)}`;
+
   if (!logoFile) {
     const canvas = document.createElement('canvas');
-    container.appendChild(canvas);
+    qrContainer.appendChild(canvas);
     QRCode.toCanvas(canvas, qrUrl, { width: 300 }, (err) => { if (err) console.error(err); });
-  } else {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const img = new Image();
-      img.src = e.target.result;
-      img.onload = function() {
-        const canvas = document.createElement('canvas');
-        const size = 300;
-        canvas.width = size; canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        QRCode.toCanvas(canvas, qrUrl, { width: size }, (err) => {
-          if (err) { console.error(err); return; }
-          const logoSize = size / 5;
-          ctx.drawImage(img, (size-logoSize)/2, (size-logoSize)/2, logoSize, logoSize);
-        });
-        container.appendChild(canvas);
-      };
-    };
-    reader.readAsDataURL(logoFile);
+    addDownloadLinkFromCanvas(canvas, `${pseudonym}_qr.png`);
+    return;
   }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.src = e.target.result;
+    img.onload = function() {
+      // create canvas, draw QR, draw logo
+      const size = 600;
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      QRCode.toCanvas(canvas, qrUrl, { width: size }, (err) => {
+        if (err) { console.error(err); return; }
+        const logoSize = Math.floor(size * 0.18);
+        ctx.drawImage(img, (size - logoSize)/2, (size - logoSize)/2, logoSize, logoSize);
+        // scale down for display
+        const display = document.createElement('canvas');
+        const displaySize = 300;
+        display.width = displaySize; display.height = displaySize;
+        display.getContext('2d').drawImage(canvas, 0, 0, displaySize, displaySize);
+        qrContainer.appendChild(display);
+        addDownloadLinkFromCanvas(canvas, `${pseudonym}_qr.png`);
+      });
+    };
+  };
+  reader.readAsDataURL(logoFile);
+}
+
+function addDownloadLinkFromCanvas(canvas, filename) {
+  // convert to blob and provide download link
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.textContent = 'Download PNG';
+    a.style.display = 'inline-block';
+    a.style.marginTop = '10px';
+    a.className = 'link-btn';
+    qrContainer.appendChild(a);
+  }, 'image/png');
 }
 </script>
 </body>
