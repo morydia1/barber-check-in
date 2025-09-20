@@ -1,63 +1,131 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin / Barber Login</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-
-  <style>
-    #qr-container { text-align:center; padding:14px; }
-    #qr-container canvas, #qr-container img { max-width:260px; width:100%; border-radius:10px; border:1px solid #eee; }
-    .small-muted { color:#666; font-size:13px; margin-top:8px; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Barber Admin - QR Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- login modal -->
   <div id="loginModal" class="modal">
     <div class="modal-content">
-      <h2>Sign in</h2>
-      <input id="loginEmail" type="email" placeholder="Your email" />
-      <input id="loginToken" type="password" placeholder="Token (if provided)" />
-      <div style="display:flex; gap:8px; margin-top:10px;">
-        <button id="loginBtn" style="flex:1;">Sign in</button>
-      </div>
-      <p id="loginStatus" class="small-muted" style="color:#c33; margin-top:8px;"></p>
+      <h2>Login</h2>
+      <input type="email" id="loginEmail" placeholder="Email" required>
+      <input type="password" id="loginToken" placeholder="Token (if provided)">
+      <button id="loginBtn">Login</button>
+      <p id="loginStatus" style="color:red;"></p>
+    </div>
   </div>
 
- <main class="container" style="padding:18px;">
-    <div id="qrApp" style="display:none;">
-      <header style="text-align:center;">
-        <h2>QR Code Generator</h2>
-        <p class="small-muted">Generate a QR for customers to scan.</p>
-      </header>
+  <div id="qrApp" style="display:none; padding:20px;">
+    <h1>QR Code Generator</h1>
 
-      <section id="adminView" style="display:none; margin-top:10px;">
-        <label class="field-label">Barber Email</label>
-        <input id="barberEmail" placeholder="barber@example.com">
-        <label class="field-label">Logo (optional)</label>
-        <input id="adminLogo" type="file" accept="image/*">
-        <div style="margin-top:10px;">
-          <button id="generateAdminQR" class="primary">Generate QR</button>
-        </div>
-      </section>
-
-      <section id="barberView" style="display:none; margin-top:10px;">
-        <p class="small-muted">Upload a logo (optional) and generate your QR.</p>
-        <label class="field-label">Logo (optional)</label>
-        <input id="barberLogo" type="file" accept="image/*">
-        <div style="margin-top:10px;">
-          <button id="generateBarberQR" class="primary">Generate My QR</button>
-        </div>
-      </section>
-
-      <div id="qr-container"></div>
-      <div id="adminStatus" class="form-status"></div>
+    <div id="adminView" style="display:none;">
+      <p>Generate QR for any barber:</p>
+      <input type="email" id="barberEmail" placeholder="Barber Email">
+      <input type="file" id="adminLogo" accept="image/*">
+      <button id="generateAdminQR">Generate QR</button>
     </div>
-  </main>
+
+    <div id="barberView" style="display:none;">
+      <p>Generate your QR:</p>
+      <input type="file" id="barberLogo" accept="image/*">
+      <button id="generateBarberQR">Generate QR</button>
+    </div>
+
+    <div id="qr-container" style="margin-top:20px;"></div>
+  </div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-<script src="admin.js"></script>
+<script>
+const loginBtn = document.getElementById('loginBtn');
+const loginModal = document.getElementById('loginModal');
+const qrApp = document.getElementById('qrApp');
+const loginStatus = document.getElementById('loginStatus');
+
+loginBtn.addEventListener('click', async () => {
+  loginStatus.textContent = '';
+  const email = document.getElementById('loginEmail').value.trim();
+  const token = document.getElementById('loginToken').value.trim();
+
+  if (!email) { loginStatus.innerText = 'Please enter your email.'; return; }
+
+  try {
+    const res = await fetch('/.netlify/functions/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, token })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      loginStatus.innerText = data.error || 'Unauthorized';
+      return;
+    }
+
+    loginModal.style.display = 'none';
+    qrApp.style.display = 'block';
+
+    if (data.role === 'admin') {
+      showAdminQRGenerator();
+    } else if (data.role === 'barber') {
+      showBarberQRGenerator(email, data.pseudonym);
+    }
+  } catch (err) {
+    console.error(err);
+    loginStatus.innerText = 'Network error';
+  }
+});
+
+function showAdminQRGenerator() {
+  document.getElementById('adminView').style.display = 'block';
+  document.getElementById('generateAdminQR').addEventListener('click', () => {
+    const barberEmail = document.getElementById('barberEmail').value.trim();
+    const logoFile = document.getElementById('adminLogo').files[0];
+    if (!barberEmail) { alert('Enter barber email'); return; }
+    generateQRCodeForEmail(barberEmail, logoFile);
+  });
+}
+
+function showBarberQRGenerator(email, pseudonym) {
+  document.getElementById('barberView').style.display = 'block';
+  document.getElementById('generateBarberQR').addEventListener('click', () => {
+    const logoFile = document.getElementById('barberLogo').files[0];
+    const emailToUse = email;
+    generateQRCodeForEmail(emailToUse, logoFile);
+  });
+}
+
+function generateQRCodeForEmail(email, logoFile) {
+  const pseudo = email.split('@')[0].replace(/[^a-zA-Z0-9]/g,'-');
+  const qrUrl = `${location.origin}/?barber=${encodeURIComponent(pseudo)}`;
+  const container = document.getElementById('qr-container');
+  container.innerHTML = '';
+  if (!logoFile) {
+    const canvas = document.createElement('canvas');
+    container.appendChild(canvas);
+    QRCode.toCanvas(canvas, qrUrl, { width: 300 }, (err) => { if (err) console.error(err); });
+  } else {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.src = e.target.result;
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const size = 300;
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        QRCode.toCanvas(canvas, qrUrl, { width: size }, (err) => {
+          if (err) { console.error(err); return; }
+          const logoSize = size / 5;
+          ctx.drawImage(img, (size-logoSize)/2, (size-logoSize)/2, logoSize, logoSize);
+        });
+        container.appendChild(canvas);
+      };
+    };
+    reader.readAsDataURL(logoFile);
+  }
+}
+</script>
 </body>
 </html>
