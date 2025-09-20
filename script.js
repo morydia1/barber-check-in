@@ -1,7 +1,7 @@
 // script.js - customer checkin
 const form = document.getElementById('checkinForm');
 const statusEl = document.getElementById('formStatus');
-const allSetEl = document.getElementById('allSet');
+const allSetEl = document.getElementById('successMsg');
 const mainContainer = document.getElementById('mainContainer');
 const newCheckinBtn = document.getElementById('newCheckin');
 
@@ -53,7 +53,9 @@ form.addEventListener('submit', async (e) => {
     if (json && json.success) {
       // show success screen
       form.hidden = true;
+      form.style.display = 'none';
       allSetEl.hidden = false;
+      allSetEl.style.display = 'block';
       statusEl.textContent = '';
     } else {
       statusEl.style.color = 'red';
