@@ -1,7 +1,7 @@
 // addBarber.js - Netlify Function to create a new barber
 // Front-end admin form calls this function
 
-const fetch = require('node-fetch');
+// const fetch = require('node-fetch');
 
 exports.handler = async function(event, context) {
   if (event.httpMethod !== 'POST') {
