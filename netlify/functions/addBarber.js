@@ -19,13 +19,13 @@ exports.handler = async function(event, context) {
     }
 
     // Apps Script Web App URL (deployed as Web App, exec mode)
-    const APPSCRIPT_URL = process.env.APPSCRIPT_URL; 
-    if (!APPSCRIPT_URL) {
+    const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL; 
+    if (!APPS_SCRIPT_URL) {
       return { statusCode: 500, body: JSON.stringify({ success: false, error: 'Apps Script URL not configured' }) };
     }
 
     // Call Apps Script createBarberAutomated via POST
-    const res = await fetch(APPSCRIPT_URL, {
+    const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
