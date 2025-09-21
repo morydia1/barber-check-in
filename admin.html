@@ -3,87 +3,92 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Admin – QR Generator</title>
+  <title>Admin / Barber – QR Generator</title>
   <link rel="stylesheet" href="style.css">
-  <style>
-    /* small admin page tweaks */
-    #qr-container { text-align:center; padding:14px; }
-    #qr-container canvas, #qr-container img { max-width:260px; width:100%; border-radius:10px; border:1px solid #eee; }
-    .small-muted { color:#666; font-size:13px; margin-top:8px; }
-    .form-status { margin-top:10px; font-size:14px; }
-    .field-label { display:block; margin-top:10px; font-weight:bold; }
-    .primary { background:#2d89ef; color:white; padding:8px 12px; border:none; border-radius:4px; cursor:pointer; }
-    .link-btn { text-decoration:none; color:#2d89ef; }
-  </style>
 </head>
 <body>
-  <!-- login modal -->
-  <div id="loginModal" class="modal">
-    <div class="modal-content">
-      <h2>Sign in</h2>
-      <input id="loginEmail" type="email" placeholder="Your email" />
-      <input id="loginToken" type="password" placeholder="Token (if provided)" />
-      <div style="display:flex; gap:8px; margin-top:10px;">
-        <button id="loginBtn" style="flex:1;">Sign in</button>
+  <!-- Login modal -->
+  <div id="loginModal" class="container">
+    <div class="card-header">
+      <h1>Sign In</h1>
+      <p class="muted">Access your dashboard</p>
+    </div>
+    <div class="card-body">
+      <label class="field-label">Email <span class="req">*</span></label>
+      <input id="loginEmail" type="email" placeholder="you@example.com" />
+
+      <label class="field-label">Token (if provided)</label>
+      <input id="loginToken" type="password" placeholder="••••••••" />
+
+      <div class="submit-row">
+        <button id="loginBtn" class="primary">Sign In</button>
       </div>
-      <p id="loginStatus" class="small-muted" style="color:#c33; margin-top:8px;"></p>
+      <p id="loginStatus" class="form-status"></p>
     </div>
   </div>
 
-  <main class="container" style="padding:18px;">
-    <div id="qrApp" style="display:none;">
-      <header style="text-align:center;">
-        <h2>QR Code Generator</h2>
-        <p class="small-muted">Generate a QR for customers to scan.</p>
-      </header>
+  <!-- Main app -->
+  <main id="qrApp" class="container" style="display:none;">
+    <div class="card-header">
+      <h1>QR Code Generator</h1>
+      <p class="muted">Generate QR codes for customer check-ins</p>
+    </div>
 
-      <!-- Existing admin QR generator -->
-      <section id="adminView" style="display:none; margin-top:10px;">
-        <label class="field-label">Barber Email</label>
-        <input id="barberEmail" placeholder="barber@example.com">
+    <div class="card-body">
+      <!-- Admin QR generator -->
+      <section id="adminView" style="display:none;">
+        <h3>Generate QR for Barber</h3>
+        <label class="field-label">Barber Email <span class="req">*</span></label>
+        <input id="barberEmail" type="email" placeholder="barber@example.com">
+
         <label class="field-label">Logo (optional)</label>
         <input id="adminLogo" type="file" accept="image/*">
-        <div style="margin-top:10px;">
+
+        <div class="submit-row">
           <button id="generateAdminQR" class="primary">Generate QR</button>
         </div>
         <div id="adminStatus" class="form-status"></div>
       </section>
 
       <!-- Barber QR generator -->
-      <section id="barberView" style="display:none; margin-top:10px;">
-        <p class="small-muted">You're logged in as a barber. Upload a logo (optional) and generate your QR.</p>
+      <section id="barberView" style="display:none;">
+        <h3>Your QR Code</h3>
+        <p class="muted">Upload a logo (optional) and generate your QR.</p>
         <label class="field-label">Logo (optional)</label>
         <input id="barberLogo" type="file" accept="image/*">
-        <div style="margin-top:10px;">
+
+        <div class="submit-row">
           <button id="generateBarberQR" class="primary">Generate My QR</button>
         </div>
-        <div id="adminStatus" class="form-status"></div>
+        <div id="barberStatus" class="form-status"></div>
       </section>
 
-      <!-- New Barber creation -->
-      <section id="newBarberView" style="display:none; margin-top:20px;">
+      <!-- New Barber creation (admin only) -->
+      <section id="newBarberView" style="display:none;">
         <h3>Add New Barber</h3>
-        <label class="field-label">Display Name</label>
-        <input id="newBarberDisplayName" placeholder="John's Barber">
 
-        <label class="field-label">Pseudonym</label>
-        <input id="newBarberPseudo" placeholder="barber-john">
+        <label class="field-label">Display Name <span class="req">*</span></label>
+        <input id="newBarberDisplayName" type="text" placeholder="John's Barber">
 
-        <label class="field-label">Email</label>
+        <label class="field-label">Pseudonym <span class="req">*</span></label>
+        <input id="newBarberPseudo" type="text" placeholder="barber-john">
+
+        <label class="field-label">Email <span class="req">*</span></label>
         <input id="newBarberEmail" type="email" placeholder="barber@example.com">
 
-        <div style="margin-top:10px;">
+        <div class="submit-row">
           <button id="createNewBarber" class="primary">Create Barber</button>
         </div>
 
         <div id="newBarberStatus" class="form-status"></div>
       </section>
 
-      <div id="qr-container"></div>
+      <!-- QR preview -->
+      <div id="qr-container" style="margin-top:20px; text-align:center;"></div>
     </div>
   </main>
 
-<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-<script src="admin.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <script src="admin.js"></script>
 </body>
 </html>

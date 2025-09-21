@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const barberView = document.getElementById('barberView');
   const newBarberView = document.getElementById('newBarberView');
   const adminStatus = document.getElementById('adminStatus');
+  const barberStatus = document.getElementById('barberStatus');
   const qrContainer = document.getElementById('qr-container');
 
   const barberEmailInput = document.getElementById('barberEmail');
@@ -124,17 +125,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ---- Generate QR for barber (self) ----
   generateBarberBtn?.addEventListener('click', async () => {
-    adminStatus.style.color = '#333';
-    adminStatus.textContent = 'Generating your QR…';
+    barberStatus.style.color = '#333';
+    barberStatus.textContent = 'Generating your QR…';
     qrContainer.innerHTML = '';
     if (!currentPseudonym) {
-      adminStatus.style.color='red';
-      adminStatus.textContent='Your account is missing a pseudonym.';
+      barberStatus.style.color='red';
+      barberStatus.textContent='Your account is missing a pseudonym.';
       return;
     }
     await generateQRForPseudo(currentPseudonym, barberLogoInput.files[0]||null);
-    adminStatus.style.color='green';
-    adminStatus.textContent='QR ready — save or download below.';
+    barberStatus.style.color='green';
+    barberStatus.textContent='QR ready — save or download below.';
   });
 
   // ---- Create New Barber ----
