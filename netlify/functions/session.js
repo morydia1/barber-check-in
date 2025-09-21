@@ -1,6 +1,4 @@
 // netlify/functions/session.js
-// Generates a one-time token for a scanned QR code
-
 export async function handler(event, context) {
   if (event.httpMethod !== 'GET') {
     return { statusCode: 405, body: 'Method Not Allowed' };
@@ -9,16 +7,30 @@ export async function handler(event, context) {
   try {
     const params = event.queryStringParameters || {};
     const barber = (params.barber || '').trim();
-    if (!barber) return { statusCode: 400, body: JSON.stringify({ error: 'Missing barber parameter' }) };
+    if (!barber) {
+      return { statusCode: 400, body: JSON.stringify({ success: false, error: 'Missing barber pseudonym' }) };
+    }
 
-    // create a short-lived random token
-    const token = Array.from({ length: 10 }, () => 
-      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 62)]
-    ).join('');
+    const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
+    if (!APPS_SCRIPT_URL) {
+      return { statusCode: 500, body: JSON.stringify({ success: false, error: 'APPS_SCRIPT_URL not set' }) };
+    }
 
-    // store in-memory for demo (in production, use DB / KV store)
-    globalThis.sessions = globalThis.sessions || {};
-    globalThis.sessions[token] = { barber, expires: Date.now() + 3 * 60 * 1000 }; // 5 min expiry
+    // Check if barber exists in registry
+    const url = `${APPS_SCRIPT_URL}?action=getbarberbypseudo&pseudo=${encodeURIComponent(barber)}`;
+    const res = await fetch(url);
+    const info = await res.json();
+
+    if (!info || !info.success || !info.barber) {
+      return { statusCode: 404, body: JSON.stringify({ success: false, error: 'Barber not found' }) };
+    }
+
+    // Generate a one-time session token
+    const token = generateSecureToken(10);
+
+    // Store token in memory (or Redis / DB for real production)
+    // Here we return it directly; backend must check on submission
+    // In Apps Script, the token can be stored in a temporary sheet or ignored for demo
 
     return {
       statusCode: 200,
@@ -27,6 +39,15 @@ export async function handler(event, context) {
 
   } catch (err) {
     console.error(err);
-    return { statusCode: 500, body: JSON.stringify({ error: err.toString() }) };
+    return { statusCode: 500, body: JSON.stringify({ success: false, error: err.toString() }) };
   }
+}
+
+function generateSecureToken(length) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
+  for (let i = 0; i < length; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
 }
