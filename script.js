@@ -1,4 +1,4 @@
-// script.js - customer checkin
+// script.js - customer checkin (full updated version)
 const form = document.getElementById('checkinForm');
 const statusEl = document.getElementById('formStatus');
 const allSetEl = document.getElementById('successMsg');
@@ -6,8 +6,9 @@ const mainContainer = document.getElementById('mainContainer');
 const newCheckinBtn = document.getElementById('newCheckin');
 
 let selectedAge = null;
+let sessionToken = null;
 
-// age selection
+// ---- AGE SELECTION ----
 document.querySelectorAll('.age-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     selectedAge = btn.dataset.value;
@@ -16,6 +17,34 @@ document.querySelectorAll('.age-btn').forEach(btn => {
   });
 });
 
+// ---- FETCH SESSION TOKEN ON PAGE LOAD ----
+async function fetchSessionToken() {
+  const params = new URLSearchParams(window.location.search);
+  const barber = params.get('barber');
+  if (!barber) {
+    statusEl.style.color = 'red';
+    statusEl.textContent = 'Invalid QR code (no barber).';
+    return;
+  }
+
+  try {
+    const res = await fetch(`/.netlify/functions/session?barber=${encodeURIComponent(barber)}`);
+    const json = await res.json();
+    if (json && json.success) {
+      sessionToken = json.token;
+    } else {
+      statusEl.style.color = 'red';
+      statusEl.textContent = 'Unable to initialize check-in session.';
+    }
+  } catch (err) {
+    console.error(err);
+    statusEl.style.color = 'red';
+    statusEl.textContent = 'Network error — cannot get session token.';
+  }
+}
+fetchSessionToken();
+
+// ---- FORM SUBMIT ----
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   statusEl.style.color = '#333';
@@ -29,7 +58,6 @@ form.addEventListener('submit', async (e) => {
     return;
   }
 
-  // collect & validate
   const name = document.getElementById('name').value.trim();
   const phone = document.getElementById('phone').value.trim();
   const email = document.getElementById('email').value.trim();
@@ -40,7 +68,13 @@ form.addEventListener('submit', async (e) => {
     return;
   }
 
-  const payload = { barber, name, phone, email, ageRange: selectedAge };
+  if (!sessionToken) {
+    statusEl.style.color = 'red';
+    statusEl.textContent = 'Session token missing — refresh page and scan QR code again.';
+    return;
+  }
+
+  const payload = { barber, name, phone, email, ageRange: selectedAge, sessionToken };
 
   try {
     const res = await fetch('/.netlify/functions/proxy', {
@@ -53,9 +87,7 @@ form.addEventListener('submit', async (e) => {
     if (json && json.success) {
       // show success screen
       form.hidden = true;
-      form.style.display = 'none';
       allSetEl.hidden = false;
-      allSetEl.style.display = 'block';
       statusEl.textContent = '';
     } else {
       statusEl.style.color = 'red';
@@ -68,12 +100,16 @@ form.addEventListener('submit', async (e) => {
   }
 });
 
+// ---- NEW CHECK-IN ----
 newCheckinBtn?.addEventListener('click', () => {
-  // reset
+  // reset form & age selection
   form.reset();
   selectedAge = null;
   document.querySelectorAll('.age-btn').forEach(b => b.classList.remove('selected'));
   form.hidden = false;
   allSetEl.hidden = true;
   statusEl.textContent = '';
+
+  // fetch new session token for next customer
+  fetchSessionToken();
 });
