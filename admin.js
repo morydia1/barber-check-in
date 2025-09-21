@@ -1,4 +1,7 @@
+// admin.js – handles login + QR generation
+
 document.addEventListener('DOMContentLoaded', () => {
+  // DOM elements
   const loginModal = document.getElementById('loginModal');
   const loginBtn = document.getElementById('loginBtn');
   const loginEmail = document.getElementById('loginEmail');
@@ -21,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentEmail = null;
   let currentPseudonym = null;
 
-  // ----- Login -----
+  // ----- LOGIN -----
   loginBtn.addEventListener('click', async () => {
     loginStatus.style.color = '#333';
     loginStatus.textContent = 'Verifying…';
@@ -46,37 +49,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const payload = await res.json();
 
-      if (!res.ok) {
+      if (!res.ok || !payload.role) {
         loginStatus.style.color = 'red';
         loginStatus.textContent = payload.error || 'Unauthorized';
         loginBtn.disabled = false;
         return;
       }
 
+      // success
       currentRole = payload.role;
       currentEmail = email;
       currentPseudonym = payload.pseudonym || null;
 
       loginModal.style.display = 'none';
       qrApp.style.display = 'block';
-      adminView.style.display = currentRole === 'admin' ? 'block' : 'none';
-      barberView.style.display = currentRole === 'barber' ? 'block' : 'none';
+
+      if (currentRole === 'admin') {
+        adminView.style.display = 'block';
+        barberView.style.display = 'none';
+      } else {
+        adminView.style.display = 'none';
+        barberView.style.display = 'block';
+      }
 
       loginBtn.disabled = false;
       loginStatus.textContent = '';
+
     } catch (err) {
-      console.error(err);
+      console.error('Auth error', err);
       loginStatus.style.color = 'red';
       loginStatus.textContent = 'Network error — try again';
       loginBtn.disabled = false;
     }
   });
 
-  // ----- Generate QR -----
-  generateAdminBtn?.addEventListener('click', () => generateAdminQR());
-  generateBarberBtn?.addEventListener('click', () => generateBarberQR());
-
-  async function generateAdminQR() {
+  // ----- GENERATE QR (Admin) -----
+  generateAdminBtn?.addEventListener('click', async () => {
     adminStatus.style.color = '#333';
     adminStatus.textContent = 'Looking up barber…';
     qrContainer.innerHTML = '';
@@ -98,31 +106,32 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       const info = await res.json();
-      if (!res.ok) {
+
+      if (!res.ok || !info.pseudonym) {
         adminStatus.style.color = 'red';
-        adminStatus.textContent = info.error || 'Barber not found.';
+        adminStatus.textContent = info.error || 'Barber not found in registry.';
         return;
       }
 
       const pseudonym = info.pseudonym;
-      if (!pseudonym) {
-        adminStatus.style.color = 'red';
-        adminStatus.textContent = 'Barber has no pseudonym configured.';
-        return;
-      }
-
+      adminStatus.textContent = 'Generating QR…';
       await generateQRForPseudo(pseudonym, logoFile);
       adminStatus.style.color = 'green';
       adminStatus.textContent = 'QR ready — save or download below.';
-    } catch (err) {
-      console.error(err);
-      adminStatus.style.color = 'red';
-      adminStatus.textContent = 'Error during lookup.';
-    }
-  }
 
-  async function generateBarberQR() {
+    } catch (err) {
+      console.error('Lookup error', err);
+      adminStatus.style.color = 'red';
+      adminStatus.textContent = 'Network error during lookup.';
+    }
+  });
+
+  // ----- GENERATE QR (Barber) -----
+  generateBarberBtn?.addEventListener('click', async () => {
+    adminStatus.style.color = '#333';
+    adminStatus.textContent = 'Generating your QR…';
     qrContainer.innerHTML = '';
+
     if (!currentPseudonym) {
       adminStatus.style.color = 'red';
       adminStatus.textContent = 'Your account is missing a pseudonym.';
@@ -135,17 +144,18 @@ document.addEventListener('DOMContentLoaded', () => {
       adminStatus.style.color = 'green';
       adminStatus.textContent = 'QR ready — save or download below.';
     } catch (err) {
-      console.error(err);
+      console.error('QR generate error', err);
       adminStatus.style.color = 'red';
       adminStatus.textContent = 'Error generating QR.';
     }
-  }
+  });
 
+  // ----- HELPER: Generate QR for pseudonym -----
   async function generateQRForPseudo(pseudonym, logoFile) {
     qrContainer.innerHTML = '';
     const qrUrl = `${location.origin}/?barber=${encodeURIComponent(pseudonym)}`;
 
-    // No logo
+    // Simple QR if no logo
     if (!logoFile) {
       const canvas = document.createElement('canvas');
       canvas.style.maxWidth = '300px';
@@ -153,18 +163,19 @@ document.addEventListener('DOMContentLoaded', () => {
       await new Promise((resolve, reject) => {
         QRCode.toCanvas(canvas, qrUrl, { width: 600 }, (err) => err ? reject(err) : resolve());
       });
-      addDownloadLinkFromCanvas(canvas, `${pseudonym}_qr.png`);
+      addDownloadLink(canvas, `${pseudonym}_qr.png`);
       return;
     }
 
-    // With logo
+    // With logo overlay
     const reader = new FileReader();
-    const logoDataUrl = await new Promise((resolve, reject) => {
-      reader.onload = () => resolve(reader.result);
+    await new Promise((resolve, reject) => {
+      reader.onload = () => resolve();
       reader.onerror = reject;
       reader.readAsDataURL(logoFile);
     });
 
+    const logoDataUrl = reader.result;
     const size = 1200;
     const off = document.createElement('canvas');
     off.width = off.height = size;
@@ -176,18 +187,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const logoImg = await loadImageFromDataUrl(logoDataUrl);
     const logoSize = Math.floor(size * 0.18);
-    ctx.drawImage(logoImg, (size - logoSize) / 2, (size - logoSize) / 2, logoSize, logoSize);
+    ctx.drawImage(logoImg, (size - logoSize)/2, (size - logoSize)/2, logoSize, logoSize);
 
-    // Display canvas
     const display = document.createElement('canvas');
-    display.width = display.height = 360;
-    display.getContext('2d').drawImage(off, 0, 0, 360, 360);
+    const displaySize = 360;
+    display.width = display.height = displaySize;
+    display.getContext('2d').drawImage(off, 0, 0, displaySize, displaySize);
     qrContainer.appendChild(display);
 
-    addDownloadLinkFromCanvas(off, `${pseudonym}_qr.png`);
+    addDownloadLink(off, `${pseudonym}_qr.png`);
   }
 
-  function addDownloadLinkFromCanvas(canvas, filename) {
+  function addDownloadLink(canvas, filename) {
     canvas.toBlob(blob => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -195,6 +206,8 @@ document.addEventListener('DOMContentLoaded', () => {
       a.download = filename;
       a.textContent = 'Download PNG';
       a.className = 'link-btn';
+      a.style.display = 'inline-block';
+      a.style.marginTop = '10px';
       qrContainer.appendChild(a);
     }, 'image/png');
   }
