@@ -29,7 +29,7 @@ exports.handler = async function(event, context) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        action: 'createBarber', // optional, for Apps Script to distinguish calls
+        action: 'addBarber', // optional, for Apps Script to distinguish calls
         pseudonym: pseudonym,
         email: email,
         displayName: displayName
