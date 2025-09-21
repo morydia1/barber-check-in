@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const qrContainer = document.getElementById('qr-container');
 
   const barberEmailInput = document.getElementById('barberEmail');
+  const barberHeading = document.getElementById('barberHeading');
   const adminLogoInput = document.getElementById('adminLogo');
   const barberLogoInput = document.getElementById('barberLogo');
   const generateAdminBtn = document.getElementById('generateAdminQR');
@@ -69,6 +70,10 @@ document.addEventListener('DOMContentLoaded', () => {
       barberView.style.display = currentRole==='barber' ? 'block':'none';
       newBarberView.style.display = currentRole==='admin' ? 'block':'none';
 
+      if (currentRole === 'barber' && currentPseudonym) {
+        barberHeading.textContent = `${currentPseudonym} QR Code`;
+      }
+      
       loginBtn.disabled = false;
       loginStatus.textContent = '';
 
