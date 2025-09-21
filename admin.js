@@ -185,28 +185,33 @@ document.addEventListener('DOMContentLoaded', () => {
   async function generateQRForPseudo(pseudonym, logoFile) {
     qrContainer.innerHTML='';
     const qrUrl = `${location.origin}/?barber=${encodeURIComponent(pseudonym)}`;
-    if (!logoFile) {
-      const canvas = document.createElement('canvas');
-      canvas.style.maxWidth='300px';
-      qrContainer.appendChild(canvas);
-      await new Promise((res,rej)=>QRCode.toCanvas(canvas, qrUrl, {width:600}, err=>err?rej(err):res()));
-      addDownloadLinkFromCanvas(canvas, `${pseudonym}_qr.png`);
-      return;
+
+    const size = 1200; // high resolution base
+    const off = document.createElement('canvas');
+    off.width = off.height = size;
+    const ctx = off.getContext('2d');
+
+    // base QR
+    await new Promise((res,rej)=>
+      QRCode.toCanvas(off, qrUrl, { width: size }, err => err ? rej(err) : res())
+    );
+
+    if (logoFile) {
+      const reader = new FileReader();
+      await new Promise((res,rej)=>{reader.onload=res; reader.onerror=rej; reader.readAsDataURL(logoFile)});
+      const logoDataUrl = reader.result;
+      const logoImg = await loadImageFromDataUrl(logoDataUrl);
+      const logoSize = Math.floor(size*0.18);
+      ctx.drawImage(logoImg,(size-logoSize)/2,(size-logoSize)/2,logoSize,logoSize);
     }
 
-    const reader = new FileReader();
-    await new Promise((res,rej)=>{reader.onload=res; reader.onerror=rej; reader.readAsDataURL(logoFile)});
-    const logoDataUrl = reader.result;
-    const size = 1200;
-    const off = document.createElement('canvas'); off.width=off.height=size;
-    const ctx = off.getContext('2d');
-    await new Promise((res,rej)=>QRCode.toCanvas(off, qrUrl, {width:size}, err=>err?rej(err):res()));
-    const logoImg = await loadImageFromDataUrl(logoDataUrl);
-    const logoSize = Math.floor(size*0.18);
-    ctx.drawImage(logoImg,(size-logoSize)/2,(size-logoSize)/2,logoSize,logoSize);
-    const display = document.createElement('canvas'); display.width=display.height=360;
+    // always produce 360×360 display canvas
+    const display = document.createElement('canvas');
+    display.width = display.height = 360;
     display.getContext('2d').drawImage(off,0,0,360,360);
     qrContainer.appendChild(display);
+
+    // download full resolution
     addDownloadLinkFromCanvas(off, `${pseudonym}_qr.png`);
   }
 
