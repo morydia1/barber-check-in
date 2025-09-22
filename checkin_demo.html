@@ -1,0 +1,167 @@
+<!-- checkin_demo.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Check-in demo — All Set UI</title>
+  <style>
+    /* small mobile-friendly styles inspired by your style.css */
+    :root {
+      --bg1: #fff4f0;
+      --accent: #ff4d4d;
+      --card-bg: #fff;
+      --muted: #6b6b6b;
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; background: linear-gradient(180deg,var(--bg1),#fff); }
+    .container { width:94%; max-width:420px; margin:28px auto; background:var(--card-bg); border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,0.08); overflow:hidden; padding:14px; }
+    h1 { margin:6px 0 10px; font-size:20px; text-align:center; }
+    p.muted { color:var(--muted); text-align:center; margin:0 0 14px; }
+    label { display:block; margin:8px 0 6px; font-weight:600; color:#333; font-size:14px; }
+    input[type="text"], input[type="tel"], input[type="email"] {
+      width:100%; padding:12px 14px; border-radius:10px; border:1px solid #e6e6e6; font-size:16px; margin-bottom:8px;
+    }
+    .age-group { display:flex; gap:8px; margin:10px 0 14px; }
+    .age-btn { flex:1; padding:10px 8px; border-radius:10px; border: 2px solid var(--accent); background:#fff; color:var(--accent); font-weight:700; cursor:pointer; transition:transform .12s ease, background .12s ease; }
+    .age-btn.selected { background:var(--accent); color:white; transform:scale(1.03); }
+    .submit-row { margin-top:6px; }
+    button.primary { width:100%; padding:12px; border-radius:10px; border:none; background:var(--accent); color:white; font-weight:700; font-size:16px; cursor:pointer; }
+    .form-status { margin-top:10px; min-height:22px; font-weight:600; color:var(--muted); text-align:center; }
+    /* spinner & all-set styles */
+    .cc-spinner { width:28px; height:28px; border-radius:50%; border:3px solid rgba(0,0,0,0.12); border-top-color:rgba(0,0,0,0.45); animation:cc-spin 1s linear infinite; display:inline-block; vertical-align:middle; margin-right:10px; }
+    @keyframes cc-spin { to { transform: rotate(360deg); } }
+    .cc-allset { padding:28px 18px; text-align:center; }
+    .cc-check { font-size:48px; line-height:1; margin-bottom:8px; }
+    .cc-thanks { font-size:18px; color:#333; margin-bottom:6px; font-weight:700; }
+    .cc-sub { font-size:14px; color:#666; }
+    .cc-new-btn { margin-top:16px; display:inline-block; padding:10px 14px; border-radius:10px; background:var(--accent); color:white; font-weight:700; border:none; cursor:pointer; }
+    @media(min-width:600px){ .container{ margin-top:44px } }
+  </style>
+</head>
+<body>
+  <main class="container" id="mainContainer">
+    <h1>Customer Check-in</h1>
+    <p class="muted">Demo: QR → open this page → fill the form</p>
+
+    <form id="checkinForm" autocomplete="off">
+      <label for="name">Name *</label>
+      <input id="name" name="name" type="text" placeholder="Jane Doe">
+
+      <label for="phone">Phone *</label>
+      <input id="phone" name="phone" type="tel" placeholder="+1 555 123 4567">
+
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" placeholder="optional@example.com">
+
+      <label>Age group *</label>
+      <div class="age-group">
+        <button type="button" class="age-btn" data-value="kid">1–14</button>
+        <button type="button" class="age-btn" data-value="adult">15–29</button>
+        <button type="button" class="age-btn" data-value="senior">+30</button>
+      </div>
+
+      <div class="submit-row">
+        <button type="submit" class="primary">Check in</button>
+      </div>
+
+      <div id="formStatus" class="form-status" aria-live="polite"></div>
+    </form>
+
+    <!-- success message container (hidden initially) -->
+    <div id="successMsg" style="display:none;"></div>
+  </main>
+
+  <script>
+    /***** Demo-only script: simulates token fetch + proxy POST so you can preview UI *****/
+    // This demo uses the exact All Set UI and behavior your real script.js will show on success.
+    const form = document.getElementById('checkinForm');
+    const statusEl = document.getElementById('formStatus');
+    const allSetEl = document.getElementById('successMsg');
+
+    let selectedAge = null;
+    let token = null;
+
+    // Age selection
+    document.querySelectorAll('.age-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedAge = btn.dataset.value;
+        document.querySelectorAll('.age-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+    });
+
+    // Simulate fetching a token (demo)
+    async function fetchOneTimeTokenDemo() {
+      statusEl.style.color = '#333';
+      statusEl.textContent = 'Initializing (demo)…';
+      // simulate network delay
+      await new Promise(r => setTimeout(r, 300));
+      token = 'demo-token-123';
+      statusEl.textContent = '';
+    }
+    fetchOneTimeTokenDemo();
+
+    function setFormEnabled(enabled) {
+      const elements = form.querySelectorAll('input, button');
+      elements.forEach(el => el.disabled = !enabled);
+    }
+
+    function showLoadingMessage(message = 'Processing…') {
+      statusEl.style.color = '#333';
+      statusEl.innerHTML = '<span class="cc-spinner" aria-hidden="true"></span><span style="vertical-align:middle">' + message + '</span>';
+    }
+
+    function showAllSetUI() {
+      form.style.display = 'none';
+      allSetEl.innerHTML = `
+        <div class="cc-allset" role="status" aria-live="polite">
+          <div class="cc-check">✅</div>
+          <div class="cc-thanks">All set! Thank you for registering.</div>
+          <div class="cc-sub">You're on the list — have a great haircut!</div>
+          <button id="cc-newcheck-btn" class="cc-new-btn">New check-in</button>
+        </div>`;
+      allSetEl.style.display = 'block';
+      document.getElementById('cc-newcheck-btn').addEventListener('click', () => {
+        // reset & get a new demo token
+        form.reset(); selectedAge = null; token = null;
+        document.querySelectorAll('.age-btn').forEach(b => b.classList.remove('selected'));
+        allSetEl.style.display = 'none';
+        form.style.display = '';
+        fetchOneTimeTokenDemo();
+      });
+      // scroll a bit for mobile
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Submit handler (demo: simulates server call)
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!token) {
+        statusEl.style.color = 'red';
+        statusEl.textContent = 'Session token missing — reload page (demo).';
+        return;
+      }
+      const name = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      if (!name || !phone || !selectedAge) {
+        statusEl.style.color = 'red';
+        statusEl.textContent = 'Please fill required fields and select an age group.';
+        return;
+      }
+
+      // show spinner + disable form
+      showLoadingMessage('Saving your check-in…');
+      setFormEnabled(false);
+
+      // simulate network delay + success response
+      await new Promise(r => setTimeout(r, 1200));
+
+      // success: hide form, show All Set
+      token = null;
+      showAllSetUI();
+      setFormEnabled(true);
+    });
+  </script>
+</body>
+</html>
