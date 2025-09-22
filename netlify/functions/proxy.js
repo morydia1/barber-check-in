@@ -1,7 +1,4 @@
 // netlify/functions/proxy.js
-// In-memory token store (demo only; reset on function cold start)
-const validTokens = new Set();
-
 export async function handler(event, context) {
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -31,18 +28,6 @@ export async function handler(event, context) {
       };
     }
 
-    // Check token validity
-    if (!validTokens.has(token)) {
-      return {
-        statusCode: 403,
-        headers: { 'Access-Control-Allow-Origin': '*' },
-        body: JSON.stringify({ success: false, error: 'Invalid or expired session token' })
-      };
-    }
-
-    // Invalidate token immediately
-    validTokens.delete(token);
-
     const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
     if (!APPS_SCRIPT_URL) {
       return {
@@ -52,7 +37,20 @@ export async function handler(event, context) {
       };
     }
 
-    // Forward data to Apps Script
+    // Check & consume token in Apps Script
+    const tokenCheckUrl = `${APPS_SCRIPT_URL}?action=checktoken&barber=${encodeURIComponent(barber)}&token=${encodeURIComponent(token)}`;
+    const tokenRes = await fetch(tokenCheckUrl);
+    const tokenJson = await tokenRes.json();
+
+    if (!tokenJson || !tokenJson.valid) {
+      return {
+        statusCode: 403,
+        headers: { 'Access-Control-Allow-Origin': '*' },
+        body: JSON.stringify({ success: false, error: 'Invalid or expired session token' })
+      };
+    }
+
+    // Forward check-in to Apps Script (use POST)
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -82,9 +80,4 @@ export async function handler(event, context) {
       body: JSON.stringify({ success: false, error: err.toString() })
     };
   }
-}
-
-// Function to add token from session.js
-export function addToken(token) {
-  if (token) validTokens.add(token);
 }

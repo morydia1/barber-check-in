@@ -1,14 +1,13 @@
-// script.js - customer checkin (updated)
+// script.js - customer checkin (final)
 const form = document.getElementById('checkinForm');
 const statusEl = document.getElementById('formStatus');
 const allSetEl = document.getElementById('successMsg');
-const mainContainer = document.getElementById('mainContainer');
 const newCheckinBtn = document.getElementById('newCheckin');
 
 let selectedAge = null;
-let sessionToken = null;
+let token = null;
 
-// age selection
+// Age selection
 document.querySelectorAll('.age-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     selectedAge = btn.dataset.value;
@@ -17,8 +16,11 @@ document.querySelectorAll('.age-btn').forEach(btn => {
   });
 });
 
-// fetch session token on page load
-async function fetchSessionToken() {
+// Fetch a one-time token (called on load and when user requests a new check-in)
+async function fetchOneTimeToken() {
+  statusEl.style.color = '#333';
+  statusEl.textContent = 'Initializing…';
+
   const params = new URLSearchParams(window.location.search);
   const barber = params.get('barber');
   if (!barber) {
@@ -30,34 +32,42 @@ async function fetchSessionToken() {
   try {
     const res = await fetch(`/.netlify/functions/session?barber=${encodeURIComponent(barber)}`);
     const json = await res.json();
-    if (json && json.success) {
-      sessionToken = json.token;
+    if (json && json.success && json.token) {
+      token = json.token;
+      statusEl.textContent = ''; // ready
     } else {
+      token = null;
       statusEl.style.color = 'red';
-      statusEl.textContent = (json && json.error) ? `Error: ${json.error}` : 'Unable to generate session token.';
+      statusEl.textContent = (json && json.error) ? `Error: ${json.error}` : 'Unable to initialize session token.';
     }
   } catch (err) {
     console.error(err);
+    token = null;
     statusEl.style.color = 'red';
-    statusEl.textContent = 'Network error — please try again.';
+    statusEl.textContent = 'Network error — cannot get session token.';
   }
 }
 
-fetchSessionToken();
+// initialize token on page load
+fetchOneTimeToken();
 
+// Submit handler
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (!sessionToken) {
-    statusEl.style.color = 'red';
-    statusEl.textContent = 'Missing session token. Please reload and scan the QR code again.';
-    return;
-  }
-
-  statusEl.style.color = '#333';
-  statusEl.textContent = 'Processing your check-in…';
 
   const params = new URLSearchParams(window.location.search);
   const barber = params.get('barber');
+  if (!barber) {
+    statusEl.style.color = 'red';
+    statusEl.textContent = 'Invalid QR (no barber).';
+    return;
+  }
+
+  if (!token) {
+    statusEl.style.color = 'red';
+    statusEl.textContent = 'Session token missing — please reload and scan the QR again.';
+    return;
+  }
 
   // collect & validate
   const name = document.getElementById('name').value.trim();
@@ -70,7 +80,17 @@ form.addEventListener('submit', async (e) => {
     return;
   }
 
-  const payload = { barber, name, phone, email, ageRange: selectedAge, token: sessionToken };
+  statusEl.style.color = '#333';
+  statusEl.textContent = 'Processing your check-in…';
+
+  const payload = {
+    barber,
+    name,
+    phone,
+    email,
+    ageRange: selectedAge,
+    token
+  };
 
   try {
     const res = await fetch('/.netlify/functions/proxy', {
@@ -81,10 +101,15 @@ form.addEventListener('submit', async (e) => {
 
     const json = await res.json();
     if (json && json.success) {
-      // show success screen
+      // Hide form, show all set message
       form.hidden = true;
-      allSetEl.hidden = false;
+      if (allSetEl) {
+        allSetEl.hidden = false;
+        allSetEl.style.display = 'block';
+      }
       statusEl.textContent = '';
+      // token is already consumed on the server (proxy called checktoken), so clear it client-side
+      token = null;
     } else {
       statusEl.style.color = 'red';
       statusEl.textContent = (json && json.error) ? `Error: ${json.error}` : 'Unable to save. Try again.';
@@ -96,14 +121,15 @@ form.addEventListener('submit', async (e) => {
   }
 });
 
+// New checkin button - resets form and fetches fresh token
 newCheckinBtn?.addEventListener('click', () => {
-  // reset
   form.reset();
   selectedAge = null;
-  sessionToken = null;
+  token = null;
   document.querySelectorAll('.age-btn').forEach(b => b.classList.remove('selected'));
   form.hidden = false;
-  allSetEl.hidden = true;
+  if (allSetEl) { allSetEl.hidden = true; allSetEl.style.display = 'none'; }
   statusEl.textContent = '';
-  fetchSessionToken(); // get a new token for the next check-in
+  // fetch new token for next customer
+  fetchOneTimeToken();
 });

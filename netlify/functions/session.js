@@ -1,6 +1,4 @@
 // netlify/functions/session.js
-import { addToken } from './proxy.js';
-
 export async function handler(event, context) {
   if (event.httpMethod !== 'GET') {
     return { statusCode: 405, body: 'Method Not Allowed' };
@@ -18,31 +16,30 @@ export async function handler(event, context) {
       return { statusCode: 500, body: JSON.stringify({ success: false, error: 'APPS_SCRIPT_URL not set' }) };
     }
 
-    // Check if barber exists in registry
-    const url = `${APPS_SCRIPT_URL}?action=getbarberbypseudo&pseudo=${encodeURIComponent(barber)}`;
-    const res = await fetch(url);
-    const info = await res.json();
-
-    if (!info || !info.success || !info.barber) {
+    // Verify barber exists
+    const checkUrl = `${APPS_SCRIPT_URL}?action=getbarberbypseudo&pseudo=${encodeURIComponent(barber)}`;
+    const checkRes = await fetch(checkUrl);
+    const checkJson = await checkRes.json();
+    if (!checkJson || !checkJson.success || !checkJson.barber) {
       return { statusCode: 404, body: JSON.stringify({ success: false, error: 'Barber not found' }) };
     }
 
-    // Generate a one-time session token
+    // Generate token
     const token = generateSecureToken(10);
 
-    // Add token to validTokens set in proxy.js
-    addToken(token);
+    // Store token in Apps Script tokens sheet
+    const storeUrl = `${APPS_SCRIPT_URL}?action=storetoken&barber=${encodeURIComponent(barber)}&token=${encodeURIComponent(token)}`;
+    await fetch(storeUrl);
 
     return {
       statusCode: 200,
       body: JSON.stringify({ success: true, token })
     };
-
   } catch (err) {
     console.error(err);
     return { statusCode: 500, body: JSON.stringify({ success: false, error: err.toString() }) };
   }
-};
+}
 
 function generateSecureToken(length) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
