@@ -1,4 +1,6 @@
 // netlify/functions/session.js
+import { addToken } from './proxy.js';
+
 export async function handler(event, context) {
   if (event.httpMethod !== 'GET') {
     return { statusCode: 405, body: 'Method Not Allowed' };
@@ -28,9 +30,8 @@ export async function handler(event, context) {
     // Generate a one-time session token
     const token = generateSecureToken(10);
 
-    // Store token in memory (or Redis / DB for real production)
-    // Here we return it directly; backend must check on submission
-    // In Apps Script, the token can be stored in a temporary sheet or ignored for demo
+    // Add token to validTokens set in proxy.js
+    addToken(token);
 
     return {
       statusCode: 200,
@@ -41,7 +42,7 @@ export async function handler(event, context) {
     console.error(err);
     return { statusCode: 500, body: JSON.stringify({ success: false, error: err.toString() }) };
   }
-}
+};
 
 function generateSecureToken(length) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';

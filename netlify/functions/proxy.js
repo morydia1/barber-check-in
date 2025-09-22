@@ -1,6 +1,6 @@
 // netlify/functions/proxy.js
-// Simple in-memory store for demo; in production use DB/Redis for persistent token validation
-const usedTokens = new Set();
+// In-memory token store (demo only; reset on function cold start)
+const validTokens = new Set();
 
 export async function handler(event, context) {
   if (event.httpMethod === 'OPTIONS') {
@@ -31,17 +31,17 @@ export async function handler(event, context) {
       };
     }
 
-    // Check if token was already used
-    if (usedTokens.has(token)) {
+    // Check token validity
+    if (!validTokens.has(token)) {
       return {
         statusCode: 403,
         headers: { 'Access-Control-Allow-Origin': '*' },
-        body: JSON.stringify({ success: false, error: 'Session token already used' })
+        body: JSON.stringify({ success: false, error: 'Invalid or expired session token' })
       };
     }
 
-    // Mark token as used immediately
-    usedTokens.add(token);
+    // Invalidate token immediately
+    validTokens.delete(token);
 
     const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
     if (!APPS_SCRIPT_URL) {
@@ -82,4 +82,9 @@ export async function handler(event, context) {
       body: JSON.stringify({ success: false, error: err.toString() })
     };
   }
+}
+
+// Function to add token from session.js
+export function addToken(token) {
+  if (token) validTokens.add(token);
 }
