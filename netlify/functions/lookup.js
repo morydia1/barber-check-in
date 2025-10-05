@@ -20,12 +20,12 @@ export async function handler(event, context) {
       return { statusCode: 404, body: JSON.stringify({ error: 'Barber not found' }) };
     }
 
-    // Return only safe fields
     const barber = info.barber || {};
     const safe = {
       pseudonym: barber.pseudonym || null,
       email: barber.email || null,
-      displayName: barber.displayName || null
+      displayName: barber.displayName || null,
+      qrNonce: barber.qrNonce || null
     };
 
     return { statusCode: 200, body: JSON.stringify(safe) };

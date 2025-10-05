@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Admin / Barber – QR Generator</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    /* small menu tweaks */
+    .admin-menu { display:flex; gap:8px; margin: 8px 0 12px; }
+    .admin-menu button { flex:1; padding:10px; border-radius:10px; border:1px solid #eee; background:#fff; cursor:pointer; font-weight:700; }
+    .admin-menu button.active { background: var(--accent); color:#fff; border-color: transparent; }
+    .small-muted { color:#666; font-size:13px; margin-top:8px; }
+    .section { display:none; margin-top:6px; }
+    .spinner-inline { display:inline-block; vertical-align:middle; margin-left:8px; }
+  </style>
 </head>
 <body>
   <!-- Login modal -->
@@ -18,7 +27,7 @@
       <input id="loginEmail" type="email" placeholder="you@example.com" />
 
       <label class="field-label">Token (if provided)</label>
-      <input id="loginToken" type="password" placeholder="••••••••" />
+      <input id="loginToken" type="password" placeholder="Admin token or barber token" />
 
       <div class="submit-row">
         <button id="loginBtn" class="primary">Sign In</button>
@@ -31,12 +40,19 @@
   <main id="qrApp" class="container" style="display:none;">
     <div class="card-header">
       <h1>QR Code Generator</h1>
-      <p class="muted">Generate QR codes for customer check-ins</p>
+      <p class="muted">Generate and rotate QR codes for customer check-ins</p>
     </div>
 
     <div class="card-body">
+      <!-- Menu -->
+      <div class="admin-menu" role="tablist" aria-label="Admin menu">
+        <button id="menuGenerate" class="active" aria-controls="adminView">Generate QR</button>
+        <button id="menuMy" aria-controls="barberView">My QR</button>
+        <button id="menuAdd" aria-controls="newBarberView">Add Barber</button>
+      </div>
+
       <!-- Admin QR generator -->
-      <section id="adminView" style="display:none;">
+      <section id="adminView" class="section" style="display:block;">
         <h3>Generate QR for Barber</h3>
         <label class="field-label">Barber Email <span class="req">*</span></label>
         <input id="barberEmail" type="email" placeholder="barber@example.com">
@@ -44,27 +60,31 @@
         <label class="field-label">Logo (optional)</label>
         <input id="adminLogo" type="file" accept="image/*">
 
-        <div class="submit-row">
-          <button id="generateAdminQR" class="primary">Generate QR</button>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button id="generateAdminQR" class="primary" style="flex:1;">Generate & Rotate</button>
+          <button id="regenAdminQR" class="link-btn" style="flex:1; border:1px solid #eee; border-radius:10px;">Rotate only</button>
         </div>
+
         <div id="adminStatus" class="form-status"></div>
       </section>
 
       <!-- Barber QR generator -->
-      <section id="barberView" style="display:none;">
+      <section id="barberView" class="section">
         <h3 id="barberHeading">Your QR Code</h3>
-        <p class="muted">Upload a logo (optional) and generate your QR.</p>
+        <p class="muted">Upload a logo (optional) and generate your QR. Rotate to invalidate old printed codes.</p>
         <label class="field-label">Logo (optional)</label>
         <input id="barberLogo" type="file" accept="image/*">
 
-        <div class="submit-row">
-          <button id="generateBarberQR" class="primary">Generate My QR</button>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button id="generateBarberQR" class="primary" style="flex:1;">Generate (no rotate)</button>
+          <button id="regenBarberQR" class="link-btn" style="flex:1; border:1px solid #eee; border-radius:10px;">Rotate my QR</button>
         </div>
+
         <div id="barberStatus" class="form-status"></div>
       </section>
 
       <!-- New Barber creation (admin only) -->
-      <section id="newBarberView" style="display:none;">
+      <section id="newBarberView" class="section">
         <h3>Add New Barber</h3>
 
         <label class="field-label">Display Name <span class="req">*</span></label>

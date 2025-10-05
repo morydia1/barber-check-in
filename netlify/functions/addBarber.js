@@ -1,9 +1,5 @@
-// addBarber.js - Netlify Function to create a new barber
-// Front-end admin form calls this function
-
-// const fetch = require('node-fetch');
-
-exports.handler = async function(event, context) {
+// netlify/functions/addBarber.js
+export async function handler(event, context) {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
@@ -18,18 +14,16 @@ exports.handler = async function(event, context) {
       };
     }
 
-    // Apps Script Web App URL (deployed as Web App, exec mode)
-    const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL; 
+    const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
     if (!APPS_SCRIPT_URL) {
       return { statusCode: 500, body: JSON.stringify({ success: false, error: 'Apps Script URL not configured' }) };
     }
 
-    // Call Apps Script createBarberAutomated via POST
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        action: 'addBarber', // optional, for Apps Script to distinguish calls
+        action: 'addBarber',
         pseudonym: pseudonym,
         email: email,
         displayName: displayName
@@ -47,10 +41,11 @@ exports.handler = async function(event, context) {
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ success: true, sheetUrl: data.sheetUrl, sheetId: data.sheetId, token: data.token })
+      body: JSON.stringify({ success: true, sheetUrl: data.sheetUrl, sheetId: data.sheetId, token: data.token, qrNonce: data.qrNonce })
     };
 
   } catch (err) {
+    console.error(err);
     return { statusCode: 500, body: JSON.stringify({ success: false, error: err.toString() }) };
   }
-};
+}

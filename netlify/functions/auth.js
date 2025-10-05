@@ -14,11 +14,6 @@ export async function handler(event, context) {
       return { statusCode: 500, body: JSON.stringify({ error: 'APPS_SCRIPT_URL not set' }) };
     }
 
-    // Fetch barber info from Apps Script registry endpoint
-    const url = `${APPS_SCRIPT_URL}?action=getbarberbyemail&email=${encodeURIComponent(email)}`;
-    const res = await fetch(url);
-    const info = await res.json();
-
     // Admin check using Netlify env vars
     const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
     const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
@@ -27,6 +22,11 @@ export async function handler(event, context) {
       return { statusCode: 200, body: JSON.stringify({ role: 'admin', email }) };
     }
 
+    // Lookup barber by email
+    const url = `${APPS_SCRIPT_URL}?action=getbarberbyemail&email=${encodeURIComponent(email)}`;
+    const res = await fetch(url);
+    const info = await res.json();
+
     if (!info || !info.success) {
       return { statusCode: 401, body: JSON.stringify({ error: 'Not subscribed' }) };
     }
@@ -34,7 +34,6 @@ export async function handler(event, context) {
     const barber = info.barber || null;
     if (barber) {
       const expectedToken = String(barber.token || '');
-      // if token exists, require it; if blank, email-only is enough
       if (!expectedToken || expectedToken === token) {
         return { statusCode: 200, body: JSON.stringify({ role: 'barber', email, pseudonym: barber.pseudonym }) };
       } else {
@@ -45,6 +44,7 @@ export async function handler(event, context) {
     return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) };
 
   } catch (err) {
+    console.error(err);
     return { statusCode: 500, body: JSON.stringify({ error: err.toString() }) };
   }
 }
