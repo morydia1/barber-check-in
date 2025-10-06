@@ -43,16 +43,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ---------- UI: menu switch ----------
   function setActiveMenu(button) {
-    [menuGenerate, menuMy, menuAdd].forEach(b => b.classList.remove('active'));
-    if (button) button.classList.add('active');
+  [menuGenerate, menuMy, menuAdd].forEach(b => b.classList.remove('active'));
+  if (button) button.classList.add('active');
 
-    // show/hide sections
+  // show/hide sections by role
+  if (currentRole === 'admin') {
     adminView.style.display = (button === menuGenerate) ? 'block' : 'none';
-    barberView.style.display = (button === menuMy) ? 'block' : 'none';
     newBarberView.style.display = (button === menuAdd) ? 'block' : 'none';
-    // clear QR preview when switching
-    qrContainer.innerHTML = '';
+    barberView.style.display = 'none';  // never show barber QR section for admin
+  } else if (currentRole === 'barber') {
+    barberView.style.display = (button === menuMy) ? 'block' : 'none';
+    adminView.style.display = 'none';
+    newBarberView.style.display = 'none';
   }
+
+  qrContainer.innerHTML = ''; // clear previous QR
+}
+
 
   menuGenerate.addEventListener('click', () => setActiveMenu(menuGenerate));
   menuMy.addEventListener('click', () => setActiveMenu(menuMy));
@@ -115,10 +122,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // choose default panel by role
       if (currentRole === 'admin') {
-        setActiveMenu(menuGenerate);
+        setActiveMenu(menuGenerate);      // show "Generate QR"
+        menuAdd.style.display = 'inline-flex';  // show "Add Barber"
+        menuMy.style.display = 'none';    // hide "My QR" menu
       } else if (currentRole === 'barber') {
-        setActiveMenu(menuMy);
-        if (currentPseudonym) barberHeading.textContent = `${currentPseudonym} QR Code`;
+        setActiveMenu(menuMy);            // show "My QR"
+        menuAdd.style.display = 'none';   // hide admin add barber
+        menuGenerate.style.display = 'none'; // hide admin generate for other barbers
       }
 
       setSectionStatus(loginStatus, '', '#333');
