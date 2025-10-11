@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setSectionStatus(loginStatus, 'Verifying…', '#333');
     loginBtn.disabled = true;
     const email = (loginEmail.value || '').trim().toLowerCase();
-    const token = (loginTokenInput.value || '').trim();
+  const token = (loginTokenInput.value || '').trim();
 
     if (!email) {
       setSectionStatus(loginStatus, 'Please enter your email.', 'red');
@@ -112,10 +112,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      currentRole = payload.role;
-      currentEmail = email;
-      currentPseudonym = payload.pseudonym || null;
-      currentLoginSecret = token;
+  currentRole = payload.role;
+  currentEmail = email;
+  currentPseudonym = payload.pseudonym || null;
+  // For admin, this is the admin token; for barber, this will be the barber phone (we use phone as auth)
+  currentLoginSecret = token;
 
       loginModal.style.display = 'none';
       qrApp.style.display = 'block';
@@ -129,6 +130,23 @@ document.addEventListener('DOMContentLoaded', () => {
         setActiveMenu(menuMy);            // show "My QR"
         menuAdd.style.display = 'none';   // hide admin add barber
         menuGenerate.style.display = 'none'; // hide admin generate for other barbers
+
+        // Immediately fetch barber info (to get current nonce) and display the current QR in My QR
+        try {
+          const info = await lookupBarberByEmail(currentEmail);
+          if (info && info.pseudonym) {
+            currentPseudonym = info.pseudonym;
+            // prefer info.qrNonce or info.nonce or info.value
+            const nonce = info.qrNonce || info.nonce || info.value || null;
+            await generateQRForPseudo(currentPseudonym, barberLogoInput.files[0]||null, nonce);
+            setSectionStatus(barberStatus, 'Displayed your current QR below.', '#333');
+          } else {
+            setSectionStatus(barberStatus, 'No barber record found for your email.', 'red');
+          }
+        } catch (err) {
+          console.error('Error fetching barber info:', err);
+          setSectionStatus(barberStatus, 'Failed to load your QR.', 'red');
+        }
       }
 
       setSectionStatus(loginStatus, '', '#333');
@@ -340,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       setSectionStatus(newBarberStatus, 'Barber created!', 'green');
-      newBarberStatus.innerHTML = `Barber created! Sheet: <a href="${data.sheetUrl}" target="_blank">${data.sheetUrl}</a><br>Token: ${data.token}`;
+  newBarberStatus.innerHTML = `Barber created! Sheet: <a href="${data.sheetUrl}" target="_blank">${data.sheetUrl}</a><br>Phone: ${phone}`;
       // Prefer App Script's returned value/nonce for QR, fallback to token
       const nonce = data.value || data.nonce || data.token || null;
       await generateQRForPseudo(pseudonym, null, nonce);

@@ -20,8 +20,29 @@ export async function handler(event, context) {
     const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
     const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
     let authorized = false;
+    // Admin path: shared secret
     if (ADMIN_TOKEN && adminToken && adminToken === ADMIN_TOKEN) authorized = true;
     if (ADMIN_TOKEN && ADMIN_EMAIL && authEmail && authToken && authEmail === ADMIN_EMAIL && authToken === ADMIN_TOKEN) authorized = true;
+
+    // Barber self-service path: allow a barber to rotate their own QR if they supply their email + phone
+    // Verify via Apps Script registry (getbarberbyemail) and check that barber.pseudonym matches and barber.phone equals provided authToken
+    if (!authorized && authEmail && authToken) {
+      try {
+        const lookupUrl = `${APPS_SCRIPT_URL}?action=getbarberbyemail&email=${encodeURIComponent(authEmail)}`;
+        const lookupRes = await fetch(lookupUrl);
+        const lookupJson = await lookupRes.json();
+        if (lookupJson && lookupJson.success && lookupJson.barber) {
+          const b = lookupJson.barber;
+          const expectedPseudo = String(b.pseudonym || b.Pseudonym || '').trim();
+          const expectedPhone = String(b.phone || b.Phone || '').trim();
+          if (expectedPseudo && expectedPseudo === pseudonym && expectedPhone && expectedPhone === authToken) {
+            authorized = true;
+          }
+        }
+      } catch (e) {
+        // ignore lookup errors here; will fail authorization below
+      }
+    }
 
     if (!authorized) {
       return { statusCode: 401, body: JSON.stringify({ success: false, error: 'Unauthorized' }) };
