@@ -161,7 +161,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const txt = await res.text();
       try { return { success: false, error: JSON.parse(txt).error || txt }; } catch { return { success: false, error: txt }; }
     }
-    return await res.json();
+    const json = await res.json();
+    // normalize response: support { value, nonce, token }
+    json.token = json.token || json.value || json.nonce || null;
+    return json;
   }
 
   // ---------- Generate & Rotate (Admin) ----------
@@ -317,7 +320,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const displayName = newBarberDisplayNameInput.value.trim();
     const pseudonym = newBarberPseudoInput.value.trim();
     const email = newBarberEmailInput.value.trim().toLowerCase();
-    if (!displayName || !pseudonym || !email) {
+    const phone = (document.getElementById('newBarberPhone') || { value: '' }).value.trim();
+    if (!displayName || !pseudonym || !email || !phone) {
       setSectionStatus(newBarberStatus, 'All fields are required.', 'red');
       return;
     }
@@ -328,7 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/.netlify/functions/addBarber', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName, pseudonym, email })
+        body: JSON.stringify({ displayName, pseudonym, email, phone })
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
@@ -337,8 +341,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       setSectionStatus(newBarberStatus, 'Barber created!', 'green');
       newBarberStatus.innerHTML = `Barber created! Sheet: <a href="${data.sheetUrl}" target="_blank">${data.sheetUrl}</a><br>Token: ${data.token}`;
-      // Optionally show QR for new barber (rotate returns token)
-      await generateQRForPseudo(pseudonym, null, data.token);
+      // Prefer App Script's returned value/nonce for QR, fallback to token
+      const nonce = data.value || data.nonce || data.token || null;
+      await generateQRForPseudo(pseudonym, null, nonce);
     } catch (err) {
       console.error(err);
       setSectionStatus(newBarberStatus, 'Network error during barber creation.', 'red');

@@ -5,9 +5,10 @@ export async function handler(event, context) {
   }
 
   try {
-    const body = JSON.parse(event.body || '{}');
-    const email = (body.email || '').toLowerCase();
-    const token = body.token || '';
+  const body = JSON.parse(event.body || '{}');
+  const email = (body.email || '').toLowerCase();
+  const token = body.token || '';
+  const phone = (body.phone || '').trim();
 
     const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
     if (!APPS_SCRIPT_URL) {
@@ -22,8 +23,8 @@ export async function handler(event, context) {
       return { statusCode: 200, body: JSON.stringify({ role: 'admin', email }) };
     }
 
-    // Lookup barber by email
-    const url = `${APPS_SCRIPT_URL}?action=getbarberbyemail&email=${encodeURIComponent(email)}`;
+  // Lookup barber by email
+  const url = `${APPS_SCRIPT_URL}?action=getbarberbyemail&email=${encodeURIComponent(email)}`;
     const res = await fetch(url);
     const info = await res.json();
 
@@ -34,10 +35,12 @@ export async function handler(event, context) {
     const barber = info.barber || null;
     if (barber) {
       const expectedToken = String(barber.token || '');
-      if (!expectedToken || expectedToken === token) {
+      const expectedPhone = String(barber.phone || barber.Phone || '').trim();
+      // Allow barber login by token (existing) OR by matching phone number
+      if ((!expectedToken || expectedToken === token) || (phone && expectedPhone && phone === expectedPhone)) {
         return { statusCode: 200, body: JSON.stringify({ role: 'barber', email, pseudonym: barber.pseudonym }) };
       } else {
-        return { statusCode: 401, body: JSON.stringify({ error: 'Invalid token' }) };
+        return { statusCode: 401, body: JSON.stringify({ error: 'Invalid credentials' }) };
       }
     }
 

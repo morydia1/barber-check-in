@@ -100,6 +100,11 @@ async function fetchSessionToken() {
       sessionToken = json.token;
       statusEl.textContent = ''; // ready
       setFormEnabled(true);
+      // Remove query params from URL so reload won't reinitialize this session
+      try {
+        const newUrl = window.location.origin + window.location.pathname;
+        history.replaceState(null, '', newUrl);
+      } catch (e) { /* ignore */ }
     } else {
       sessionToken = null;
       setFormEnabled(false);
@@ -170,6 +175,8 @@ form.addEventListener('submit', async (e) => {
     if (json && json.success) {
       // success -> show All Set and remove ability to resubmit for this session
       sessionToken = null;
+      // clear URL again in case it was preserved and show All Set
+      try { history.replaceState(null, '', window.location.origin + window.location.pathname); } catch(e) {}
       showAllSet();
     } else {
       // error returned by server

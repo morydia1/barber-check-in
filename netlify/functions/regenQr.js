@@ -9,14 +9,21 @@ export async function handler(event, context) {
     const body = JSON.parse(event.body || '{}');
     const pseudonym = (body.pseudonym || '').trim();
     const adminToken = (body.adminToken || '').trim();
+    const authEmail = (body.authEmail || '').trim().toLowerCase();
+    const authToken = (body.authToken || '').trim();
 
-    if (!pseudonym || !adminToken) {
-      return { statusCode: 400, body: JSON.stringify({ success: false, error: 'pseudonym and adminToken required' }) };
+    if (!pseudonym) {
+      return { statusCode: 400, body: JSON.stringify({ success: false, error: 'pseudonym required' }) };
     }
 
-    // verify admin token (simple shared-secret)
+    // verify admin token either by shared adminToken OR authEmail+authToken matching ADMIN_EMAIL/ADMIN_TOKEN
     const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
-    if (!ADMIN_TOKEN || adminToken !== ADMIN_TOKEN) {
+    const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
+    let authorized = false;
+    if (ADMIN_TOKEN && adminToken && adminToken === ADMIN_TOKEN) authorized = true;
+    if (ADMIN_TOKEN && ADMIN_EMAIL && authEmail && authToken && authEmail === ADMIN_EMAIL && authToken === ADMIN_TOKEN) authorized = true;
+
+    if (!authorized) {
       return { statusCode: 401, body: JSON.stringify({ success: false, error: 'Unauthorized' }) };
     }
 
@@ -26,7 +33,7 @@ export async function handler(event, context) {
     }
 
     // Call Apps Script regenqr endpoint (doGet)
-    const url = `${APPS_SCRIPT_URL}?action=regenqr&pseudo=${encodeURIComponent(pseudonym)}`;
+  const url = `${APPS_SCRIPT_URL}?action=regenqr&pseudo=${encodeURIComponent(pseudonym)}`;
     const res = await fetch(url);
     const data = await res.json();
 
@@ -34,8 +41,9 @@ export async function handler(event, context) {
       return { statusCode: 500, body: JSON.stringify({ success: false, error: data.error || 'Failed to regen QR' }) };
     }
 
-    // returns { success: true, nonce: '...' }
-    return { statusCode: 200, body: JSON.stringify({ success: true, nonce: data.nonce }) };
+    // Apps Script returns { success: true, field, value } — normalize to 'value' and include 'nonce' for compatibility
+    const value = data.value || data.nonce || null;
+    return { statusCode: 200, body: JSON.stringify({ success: true, value: value, nonce: value }) };
   } catch (err) {
     console.error(err);
     return { statusCode: 500, body: JSON.stringify({ success: false, error: err.toString() }) };

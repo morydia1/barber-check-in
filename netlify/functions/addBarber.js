@@ -5,12 +5,12 @@ export async function handler(event, context) {
   }
 
   try {
-    const { displayName, pseudonym, email } = JSON.parse(event.body || '{}');
+    const { displayName, pseudonym, email, phone } = JSON.parse(event.body || '{}');
 
-    if (!displayName || !pseudonym || !email) {
+    if (!displayName || !pseudonym || !email || !phone) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ success: false, error: 'displayName, pseudonym, and email required' })
+        body: JSON.stringify({ success: false, error: 'displayName, pseudonym, email and phone required' })
       };
     }
 
@@ -26,6 +26,7 @@ export async function handler(event, context) {
         action: 'addBarber',
         pseudonym: pseudonym,
         email: email,
+        phone: phone,
         displayName: displayName
       })
     });
@@ -39,9 +40,11 @@ export async function handler(event, context) {
       };
     }
 
+    // Normalize Apps Script response: it may return { value } or { nonce }
+    const nonce = data.value || data.nonce || data.qrNonce || null;
     return {
       statusCode: 200,
-      body: JSON.stringify({ success: true, sheetUrl: data.sheetUrl, sheetId: data.sheetId, token: data.token, qrNonce: data.qrNonce })
+      body: JSON.stringify({ success: true, sheetUrl: data.sheetUrl, sheetId: data.sheetId, token: data.token, nonce })
     };
 
   } catch (err) {
