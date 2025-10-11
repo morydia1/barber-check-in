@@ -8,6 +8,7 @@ const submitBtn = document.getElementById('submitBtn');
 
 let selectedAge = null;
 let sessionToken = null;
+let currentBarber = null; // store barber pseudonym after session init
 
 // Inject small spinner CSS if not present (safe; won't duplicate)
 (function ensureSpinnerStyles(){
@@ -102,6 +103,8 @@ async function fetchSessionToken() {
       setFormEnabled(true);
       // Remove query params from URL so reload won't reinitialize this session
       try {
+        // keep barber in memory so submit still knows which barber to send
+        currentBarber = barber;
         const newUrl = window.location.origin + window.location.pathname;
         history.replaceState(null, '', newUrl);
       } catch (e) { /* ignore */ }
@@ -127,7 +130,10 @@ fetchSessionToken();
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const { barber } = getQueryParams();
+  // barber may have been removed from the URL (we clear it after session init).
+  // prefer query param, fallback to in-memory value stored when session was created.
+  const { barber: qpBarber } = getQueryParams();
+  const barber = qpBarber || currentBarber;
   if (!barber) {
     statusEl.style.color = 'red';
     statusEl.textContent = 'Invalid QR (no barber).';
